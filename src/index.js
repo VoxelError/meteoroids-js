@@ -23,15 +23,13 @@ const ship_explode_dur = 0.3 				// duration of the ship's explosion in seconds
 const ship_inv_dur = 3 						// duration of the ship's invisibility in seconds
 const ship_size = 30 						// ship height in pixels
 const ship_thrust = 5 						// acceleration of the ship in pixels per second per second
-const ship_turn_spd = 360 					// turn speed in degrees per second
+const ship_turn_spd = 180 					// turn speed in degrees per second
 
 const show_bounding = false 				// show or hide collision bounding
 const show_centre_dot = false 				// show or hide ship's centre dot
 
 const text_fade_time = 2.5 					// text fade time in seconds
 const text_size = 40 						// text font height in pixels
-
-const sound_on = true
 
 const canv = document.getElementById("game_canvas")
 const ctx = canv.getContext("2d")
@@ -62,37 +60,37 @@ const fxHit = new Sound("sounds/hit.m4a", 5)
 const fxLaser = new Sound("sounds/laser.m4a", 5, 0.5)
 const fxThrust = new Sound("sounds/thrust.m4a")
 
+const sound_on = true
+
 document.addEventListener("keydown", keyDown)
 document.addEventListener("keyup", keyUp)
-
-let
-	asteroids,
-	asteroids_left,
-	asteroids_total,
-	game_level,
-	lives,
-	score,
-	scoreHigh,
-	ship,
-	text,
-	textAlpha
 
 setInterval(update, 1000 / fps)
 
 const distBetweenPoints = (x1, y1, x2, y2) => Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2))
 
+let
+	asteroids,
+	game_level,
+	game_lives,
+	game_score,
+	high_score,
+	ship,
+	text,
+	textAlpha
+
 const newGame = () => {
 	game_level = 0
-	score = 0
-	lives = starting_lives
+	game_score = 0
+	game_lives = starting_lives
 	ship = newShip()
 
 	// get the high score from local storage
 	var scoreStr = localStorage.getItem(save_key_score)
 	if (scoreStr == null) {
-		scoreHigh = 0
+		high_score = 0
 	} else {
-		scoreHigh = parseInt(scoreStr)
+		high_score = parseInt(scoreStr)
 	}
 
 	newLevel()
@@ -102,8 +100,6 @@ newGame()
 
 function createAsteroidBelt() {
 	asteroids = []
-	asteroids_total = (roid_num + game_level) * 7
-	asteroids_left = asteroids_total
 	var x, y
 	for (var i = 0; i < roid_num + game_level; i++) {
 		// random asteroid location (not touching spaceship)
@@ -124,27 +120,24 @@ function destroyAsteroid(index) {
 	if (r == Math.ceil(roid_size / 2)) { // large asteroid
 		asteroids.push(newAsteroid(x, y, Math.ceil(roid_size / 4)))
 		asteroids.push(newAsteroid(x, y, Math.ceil(roid_size / 4)))
-		score += roid_pts_lge
+		game_score += roid_pts_lge
 	} else if (r == Math.ceil(roid_size / 4)) { // medium asteroid
 		asteroids.push(newAsteroid(x, y, Math.ceil(roid_size / 8)))
 		asteroids.push(newAsteroid(x, y, Math.ceil(roid_size / 8)))
-		score += roid_pts_med
+		game_score += roid_pts_med
 	} else {
-		score += roid_pts_sml
+		game_score += roid_pts_sml
 	}
 
 	// check high score
-	if (score > scoreHigh) {
-		scoreHigh = score
-		localStorage.setItem(save_key_score, scoreHigh)
+	if (game_score > high_score) {
+		high_score = game_score
+		localStorage.setItem(save_key_score, high_score)
 	}
 
 	// destroy the asteroid
 	asteroids.splice(index, 1)
 	fxHit.play()
-
-	// calculate the ratio of remaining asteroids to determine music tempo
-	asteroids_left--
 
 	// new level when no more asteroids
 	if (asteroids.length == 0) {
@@ -472,8 +465,8 @@ function update() {
 
 	// draw the lives
 	var lifeColour
-	for (var i = 0; i < lives; i++) {
-		lifeColour = exploding && i == lives - 1 ? "red" : "white"
+	for (var i = 0; i < game_lives; i++) {
+		lifeColour = exploding && i == game_lives - 1 ? "red" : "white"
 		drawShip(ship_size + i * ship_size * 1.2, ship_size, 0.5 * Math.PI, lifeColour)
 	}
 
@@ -481,15 +474,16 @@ function update() {
 	ctx.textAlign = "right"
 	ctx.textBaseline = "middle"
 	ctx.fillStyle = "white"
-	ctx.font = text_size + "px dejavu sans mono"
-	ctx.fillText(score, canv.width - ship_size / 2, ship_size)
+	ctx.font = (text_size / 2) + "px Emulogic"
+	ctx.fillText(game_score, canv.width - ship_size / 2, ship_size)
 
 	// draw the high score
 	ctx.textAlign = "center"
 	ctx.textBaseline = "middle"
 	ctx.fillStyle = "white"
-	ctx.font = (text_size * 0.75) + "px dejavu sans mono"
-	ctx.fillText("BEST " + scoreHigh, canv.width / 2, ship_size)
+	ctx.font = (text_size / 2) + "px Emulogic"
+	ctx.fillText("HIGH SCORE", canv.width / 2, 30)
+	ctx.fillText(high_score, canv.width / 2, 60)
 
 	// detect laser hits on asteroids
 	var ax, ay, ar, lx, ly
@@ -544,8 +538,8 @@ function update() {
 
 		// reset the ship after the explosion has finished
 		if (ship.explodeTime == 0) {
-			lives--
-			if (lives == 0) {
+			game_lives--
+			if (game_lives == 0) {
 				gameOver()
 			} else {
 				ship = newShip()

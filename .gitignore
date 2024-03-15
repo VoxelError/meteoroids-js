@@ -1,2 +1,5 @@
 node_modules
 package-lock.json
+_app.js
+_app2.js
+_ship.js

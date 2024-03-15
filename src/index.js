@@ -32,7 +32,6 @@ const text_fade_time = 2.5 					// text fade time in seconds
 const text_size = 40 						// text font height in pixels
 
 const sound_on = true
-const music_on = true
 
 const canv = document.getElementById("game_canvas")
 const ctx = canv.getContext("2d")
@@ -58,43 +57,10 @@ function Sound(src, maxStreams = 1, vol = 1.0) {
 	}
 }
 
-function Music(srcLow, srcHigh) {
-	this.soundLow = new Audio(srcLow)
-	this.soundHigh = new Audio(srcHigh)
-	this.low = true
-	this.tempo = 1.0 // seconds per beat
-	this.beatTime = 0 // frames left until next beat
-
-	this.play = function () {
-		if (music_on) {
-			if (this.low) {
-				this.soundLow.play()
-			} else {
-				this.soundHigh.play()
-			}
-			this.low = !this.low
-		}
-	}
-
-	this.setAsteroidRatio = function (ratio) {
-		this.tempo = 1.0 - 0.75 * (1.0 - ratio)
-	}
-
-	this.tick = function () {
-		if (this.beatTime == 0) {
-			this.play()
-			this.beatTime = Math.ceil(this.tempo * fps)
-		} else {
-			this.beatTime--
-		}
-	}
-}
-
 const fxExplode = new Sound("sounds/explode.m4a")
 const fxHit = new Sound("sounds/hit.m4a", 5)
 const fxLaser = new Sound("sounds/laser.m4a", 5, 0.5)
 const fxThrust = new Sound("sounds/thrust.m4a")
-const play_music = new Music("sounds/music-low.m4a", "sounds/music-high.m4a")
 
 document.addEventListener("keydown", keyDown)
 document.addEventListener("keyup", keyUp)
@@ -179,7 +145,6 @@ function destroyAsteroid(index) {
 
 	// calculate the ratio of remaining asteroids to determine music tempo
 	asteroids_left--
-	play_music.setAsteroidRatio(asteroids_left / asteroids_total)
 
 	// new level when no more asteroids
 	if (asteroids.length == 0) {
@@ -285,7 +250,6 @@ function newAsteroid(x, y, r) {
 }
 
 function newLevel() {
-	play_music.setAsteroidRatio(1)
 	text = "Level " + (game_level + 1)
 	textAlpha = 1.0
 	createAsteroidBelt()
@@ -333,9 +297,6 @@ function shootLaser() {
 function update() {
 	var blinkOn = ship.blinkNum % 2 == 0
 	var exploding = ship.explodeTime > 0
-
-	// tick the music
-	play_music.tick()
 
 	// draw space
 	ctx.fillStyle = "black"

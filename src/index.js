@@ -1,3 +1,5 @@
+import { fxExplode, fxHit, fxLaser, fxThrust } from "./sounds"
+
 const fps = 60 								// frames per second
 const friction = 0.7 						// friction coefficient of space (0 = no friction, 1 = lots of friction)
 const starting_lives = 3 					// starting number of lives
@@ -33,34 +35,6 @@ const text_size = 40 						// text font height in pixels
 
 const canv = document.getElementById("game_canvas")
 const ctx = canv.getContext("2d")
-
-function Sound(src, maxStreams = 1, vol = 1.0) {
-	this.streamNum = 0
-	this.streams = []
-	for (var i = 0; i < maxStreams; i++) {
-		this.streams.push(new Audio(src))
-		this.streams[i].volume = vol
-	}
-
-	this.play = function () {
-		if (sound_on) {
-			this.streamNum = (this.streamNum + 1) % maxStreams
-			this.streams[this.streamNum].play()
-		}
-	}
-
-	this.stop = function () {
-		this.streams[this.streamNum].pause()
-		this.streams[this.streamNum].currentTime = 0
-	}
-}
-
-const fxExplode = new Sound("sounds/explode.m4a")
-const fxHit = new Sound("sounds/hit.m4a", 5)
-const fxLaser = new Sound("sounds/laser.m4a", 5, 0.5)
-const fxThrust = new Sound("sounds/thrust.m4a")
-
-const sound_on = true
 
 document.addEventListener("keydown", keyDown)
 document.addEventListener("keyup", keyUp)

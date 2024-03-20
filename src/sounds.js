@@ -1,4 +1,4 @@
-const sound_on = true
+const sound_on = false
 
 class Sound {
 	constructor(source, maxStreams = 1, vol = 0.05) {

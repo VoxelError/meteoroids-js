@@ -1,4 +1,3 @@
-import { draw_space } from "./draws"
 import { fxExplode, fxHit, fxLaser, fxThrust } from "./sounds"
 
 export const canvas = document.getElementById("game_canvas")
@@ -206,7 +205,8 @@ function shoot_laser() {
 }
 
 setInterval(() => {
-	draw_space(canvas, context)
+	context.fillStyle = "black"
+	context.fillRect(0, 0, canvas.width, canvas.height)
 
 	const blink_on = ship.blink_num % 2 == 0
 	const exploding = ship.explode_time > 0

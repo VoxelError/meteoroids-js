@@ -4,21 +4,22 @@ const canvas = document.getElementById("game_canvas")
 const context = canvas.getContext("2d")
 
 const pi = Math.PI
+const { floor, random } = Math
+const sin = (value) => Math.sin(value)
+const cos = (value) => Math.cos(value)
+const rng = (range, min = 1) => floor(Math.random() * range) + min
 const to_radians = (num) => (num * pi) / 180
 const distance = (x1, y1, x2, y2) => Math.sqrt(((x2 - x1) ** 2) + ((y2 - y1) ** 2))
+const to_array = (length, fill = 0) => Array(length).fill(fill)
 
 const fps = 60
-const friction = 0.7
-const starting_lives = 3
 const ship_size = 30
-const laser_speed = 15
 
 const debug_collisions = false
 const debug_dot = false
 
-const save_key_score = "highscore"
-const high_score = () => localStorage.getItem(save_key_score) ?? 0
-const set_high_score = (value) => localStorage.setItem(save_key_score, value)
+const high_score = () => localStorage.getItem("highscore") ?? 0
+const set_high_score = (value) => localStorage.setItem("highscore", value)
 
 let ship
 let text
@@ -29,27 +30,13 @@ let game_lives
 let flicker = 0
 
 const asteroids_list = []
-const asteroids = {
-	vertices: 10,
-	jaggedness: 0.4,
-	initial: {
-		amount: 3,
-		size: 100,
-		max_velocity: 50
-	},
-	points: {
-		large: 20,
-		medium: 50,
-		small: 100
-	}
-}
 
 const default_ship = () => {
 	return {
 		x: canvas.width / 2,
 		y: canvas.height / 2,
-		a: to_radians(90),
 		r: ship_size / 2,
+		a: to_radians(90),
 		blink_num: 15,
 		blink_time: 6,
 		can_shoot: true,
@@ -68,8 +55,8 @@ const default_ship = () => {
 document.addEventListener("keydown", (event) => {
 	if (ship.is_dead) return
 	event.code == "ArrowUp" && (ship.is_thrusting = true)
-	event.code == "ArrowRight" && (ship.rot = -to_radians(270) / fps)
-	event.code == "ArrowLeft" && (ship.rot = to_radians(270) / fps)
+	event.code == "ArrowRight" && (ship.rot = -to_radians(180) / fps)
+	event.code == "ArrowLeft" && (ship.rot = to_radians(180) / fps)
 	event.code == "Space" && shoot_laser()
 })
 
@@ -81,114 +68,101 @@ document.addEventListener("keyup", (event) => {
 	event.code == "Space" && (ship.can_shoot = true)
 })
 
-const new_asteroid = (x_coord, y_coord, radius) => {
-	const level_multiplier = 1 + (game_level * 0.1)
-	const vertices = Math.floor(Math.random() * (asteroids.vertices + 1) + asteroids.vertices / 2)
-	return {
-		x: x_coord,
-		y: y_coord,
-		r: radius,
-		a: Math.random() * pi * 2, // in radians
-		xv: Math.random() * asteroids.initial.max_velocity * level_multiplier * (Math.random() < 0.5 ? 1 : -1) / fps,
-		yv: Math.random() * asteroids.initial.max_velocity * level_multiplier * (Math.random() < 0.5 ? 1 : -1) / fps,
-		offs: Array(vertices).fill(0).map(() => (Math.random() * asteroids.jaggedness * 2) - asteroids.jaggedness + 1),
-		vert: vertices
-	}
-}
-
 const new_level = () => {
+	asteroids_list.length = 0
+	game_level++
 	text = `Level ${game_level}`
 	text_alpha = 1.0
-	asteroids_list.length = 0
-	Array(asteroids.initial.amount + game_level).fill(0).forEach(() => {
+	to_array(2 + game_level).forEach(() => {
 		let x, y
 		do {
-			x = Math.floor(Math.random() * canvas.width)
-			y = Math.floor(Math.random() * canvas.height)
-		} while (distance(ship.x, ship.y, x, y) < asteroids.initial.size * 2 + ship.r)
-		asteroids_list.push(new_asteroid(x, y, Math.ceil(asteroids.initial.size / 2)))
+			x = rng(canvas.width)
+			y = rng(canvas.height)
+		} while (distance(x, y, ship.x, ship.y) < ship.r + 200)
+		new_asteroid(x, y, 50)
 	})
 }
 
 const new_game = () => {
-	game_level = 1
+	game_level = 0
 	game_score = 0
-	game_lives = starting_lives
+	game_lives = 3
 	ship = default_ship()
 	new_level()
 }
 
-const destroy_asteroid = (asteroid, index) => {
-	if (asteroid.r == Math.ceil(asteroids.initial.size / 2)) { // large asteroid
-		asteroids_list.push(new_asteroid(asteroid.x, asteroid.y, Math.ceil(asteroids.initial.size / 4)))
-		asteroids_list.push(new_asteroid(asteroid.x, asteroid.y, Math.ceil(asteroids.initial.size / 4)))
-		game_score += asteroids.points.large
-	} else if (asteroid.r == Math.ceil(asteroids.initial.size / 4)) { // medium asteroid
-		asteroids_list.push(new_asteroid(asteroid.x, asteroid.y, Math.ceil(asteroids.initial.size / 8)))
-		asteroids_list.push(new_asteroid(asteroid.x, asteroid.y, Math.ceil(asteroids.initial.size / 8)))
-		game_score += asteroids.points.medium
-	} else {
-		game_score += asteroids.points.small
+const game_over = () => {
+	ship.is_dead = true
+	text = "Game Over"
+	text_alpha = 1.0
+}
+
+const new_asteroid = (x, y, r) => {
+	const angle = random() * pi * 2
+	const vertices = rng(11, 5)
+	const offsets = to_array(vertices).map(() => (random() * 0.8) + 0.6)
+	const velocity = () => {
+		const roll = (random() * 0.2) + 0.2
+		const flip = random() < 0.5 ? -1 : 1
+		const mult = game_level * 1.1
+		return roll * flip * mult
 	}
+	asteroids_list.push({ x, y, r, a: angle, xv: velocity(), yv: velocity(), offs: offsets, vert: vertices })
+}
+
+const destroy_asteroid = (asteroid, index) => {
+	const { x, y, r } = asteroid
+
+	if (r == 50) {
+		game_score += 20
+		new_asteroid(x, y, 25)
+		new_asteroid(x, y, 25)
+	} else if (r == 25) {
+		game_score += 50
+		new_asteroid(x, y, 12.5)
+		new_asteroid(x, y, 12.5)
+	} else game_score += 100
 
 	game_score > high_score() && set_high_score(game_score)
 
 	asteroids_list.splice(index, 1)
 	fxHit.play()
-
-	if (asteroids_list.length) return
-	game_level++
-	new_level()
 }
 
 const draw_ship = (x, y, a) => {
-	context.strokeStyle = "white"
-	context.lineWidth = ship_size / 20
+	const { r } = ship
 	context.beginPath()
-	context.moveTo( // nose of the ship
-		x + 4 / 3 * ship.r * Math.cos(a),
-		y - 4 / 3 * ship.r * Math.sin(a)
+	context.moveTo(
+		x + (4 / 3) * r * cos(a),
+		y - (4 / 3) * r * sin(a)
 	)
-	context.lineTo( // rear left
-		x - ship.r * (2 / 3 * Math.cos(a) + Math.sin(a)),
-		y + ship.r * (2 / 3 * Math.sin(a) - Math.cos(a))
+	context.lineTo(
+		x - ((cos(a) * 2 / 3) + sin(a)) * r,
+		y + ((sin(a) * 2 / 3) - cos(a)) * r
 	)
-	context.lineTo( // rear right
-		x - ship.r * (2 / 3 * Math.cos(a) - Math.sin(a)),
-		y + ship.r * (2 / 3 * Math.sin(a) + Math.cos(a))
+	context.lineTo(
+		x - ((cos(a) * 2 / 3) - sin(a)) * r,
+		y + ((sin(a) * 2 / 3) + cos(a)) * r
 	)
 	context.closePath()
+	context.strokeStyle = "white"
 	context.stroke()
 }
 
 const shoot_laser = () => {
+	const { x, y, r, a } = ship
 	if (ship.can_shoot && ship.lasers.length < 10) {
-		ship.lasers.push({ // from the nose of the ship
-			x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
-			y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a),
-			xv: laser_speed * Math.cos(ship.a),
-			yv: -laser_speed * Math.sin(ship.a),
+		ship.lasers.push({
+			x: x + (4 / 3) * r * cos(a),
+			y: y - (4 / 3) * r * sin(a),
+			xv: 15 * cos(a),
+			yv: -15 * sin(a),
 			dist: 0,
 			explode_time: 0
 		})
 		fxLaser.play()
 	}
 	ship.can_shoot = false
-}
-
-const explode = () => {
-	// draw explosion
-	const draw_circle = (color, radius) => {
-		// context.fillStyle = color
-		context.beginPath()
-		context.arc(ship.x, ship.y, ship.r * radius, 0, pi * 2, false)
-		context.fill()
-	}
-	draw_circle("darkred", 1.7)
-	draw_circle("red", 1.4)
-	draw_circle("orange", 1.1)
-	draw_circle("yellow", 0.8)
-	draw_circle("white", 0.5)
 }
 
 const draw_space = () => {
@@ -208,34 +182,76 @@ const draw_dot = () => {
 	context.fillRect(ship.x - 1, ship.y - 1, 2, 2)
 }
 
-setInterval(() => {
-	game_lives == null && new_game()
-
-	const blink_on = ship.blink_num % 2 == 0
-	const exploding = ship.explode_time > 0
-
-	draw_space()
-
-	debug_collisions && draw_collision(ship.x, ship.y, ship.r)
-	debug_dot && draw_dot()
-
-	// draw score
+const draw_score = () => {
 	context.textAlign = "right"
 	context.textBaseline = "middle"
 	context.fillStyle = "white"
 	context.font = "20px Emulogic"
-	context.fillText(game_score, canvas.width - ship_size / 2, ship_size)
+	context.fillText(game_score, canvas.width - 15, 30)
+}
 
-	// draw high score
+const draw_high_score = () => {
 	context.textAlign = "center"
 	context.textBaseline = "middle"
 	context.fillStyle = "white"
 	context.font = "20px Emulogic"
 	context.fillText("HIGH SCORE", canvas.width / 2, 30)
 	context.fillText(high_score(), canvas.width / 2, 60)
+}
 
-	const i_frames = () => {
-		blink_on && !ship.is_dead && draw_ship(ship.x, ship.y, ship.a)
+const draw_asteroids = () => asteroids_list.forEach((asteroid) => {
+	const { x, y, r, a, vert } = asteroid
+	const offsets = asteroid.offs
+	const vertex = (x_axis, index) => (x_axis
+		? x + (r * offsets[index] * cos(a + (index * pi * 2 / vert)))
+		: y + (r * offsets[index] * sin(a + (index * pi * 2 / vert)))
+	)
+
+	context.strokeStyle = "grey"
+	context.beginPath()
+	context.moveTo(vertex(true, 0), vertex(false, 0))
+	offsets.forEach((v, index) => context.lineTo(vertex(true, index), vertex(false, index)))
+	context.closePath()
+	context.stroke()
+
+	debug_collisions && draw_collision(x, y, r)
+})
+
+const draw_lasers = () => ship.lasers.forEach((laser) => {
+	if (laser.explode_time != 0) return
+	context.beginPath()
+	context.rect(laser.x, laser.y, 3, 3)
+	context.fill()
+})
+
+const screen_wrap_ship = () => {
+	ship.x < 0 - ship.r && (ship.x = canvas.width + ship.r)
+	ship.x > canvas.width + ship.r && (ship.x = 0 - ship.r)
+	ship.y < 0 - ship.r && (ship.y = canvas.height + ship.r)
+	ship.y > canvas.height + ship.r && (ship.y = 0 - ship.r)
+}
+
+setInterval(() => {
+	game_lives ?? new_game()
+	ship.is_dead && text_alpha <= 0 && new_game()
+	!asteroids_list.length && new_level()
+
+	draw_space()
+	draw_score()
+	draw_high_score()
+	draw_asteroids()
+	draw_lasers()
+
+	to_array(game_lives).forEach((v, i) => draw_ship((i * 36) + 30, 30, pi / 2))
+	debug_collisions && draw_collision(ship.x, ship.y, ship.r)
+	debug_dot && draw_dot()
+
+	if (ship.explode_time > 0) {
+		context.beginPath()
+		context.arc(ship.x, ship.y, ship.r * 1.5, 0, pi * 2, false)
+		context.fill()
+	} else {
+		ship.blink_num % 2 == 0 && !ship.is_dead && draw_ship(ship.x, ship.y, ship.a)
 		ship.blink_num > 0 && ship.blink_time--
 		if (ship.blink_time == 0) {
 			ship.blink_time = 6
@@ -243,78 +259,40 @@ setInterval(() => {
 		}
 	}
 
-	exploding ? explode() : i_frames()
-
-	// draw asteroids
-	asteroids_list.forEach((asteroid) => {
-		context.strokeStyle = "slategrey"
-		context.lineWidth = ship_size / 20
-
-		// draw the path
-		context.beginPath()
-		context.moveTo(
-			asteroid.x + asteroid.r * asteroid.offs[0] * Math.cos(asteroid.a),
-			asteroid.y + asteroid.r * asteroid.offs[0] * Math.sin(asteroid.a)
-		)
-
-		// draw the polygon
-		asteroid.offs.forEach((offset, index) => {
-			context.lineTo(
-				asteroid.x + asteroid.r * offset * Math.cos(asteroid.a + index * pi * 2 / asteroid.vert),
-				asteroid.y + asteroid.r * offset * Math.sin(asteroid.a + index * pi * 2 / asteroid.vert)
-			)
-		})
-		context.closePath()
-		context.stroke()
-
-		debug_collisions && draw_collision(asteroid.x, asteroid.y, asteroid.r)
-	})
-
-	// thrust the ship
 	if (ship.is_thrusting && !ship.is_dead) {
-		ship.thrust.x += Math.cos(ship.a) * 5 / fps
-		ship.thrust.y -= Math.sin(ship.a) * 5 / fps
+		const { x, y, r, a } = ship
+
+		ship.thrust.x += (cos(a) * 0.083)
+		ship.thrust.y -= (sin(a) * 0.083)
 		fxThrust.play()
 
-		// draw the thruster
-		if (!exploding && blink_on) {
-			context.strokeStyle = "white"
+		if (ship.explode_time <= 0 && ship.blink_num % 2 == 0) {
 			context.beginPath()
-			context.moveTo( // rear left
-				ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)),
-				ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
+			context.moveTo(
+				x - r * (2 / 3 * cos(a) + 0.5 * sin(a)),
+				y + r * (2 / 3 * sin(a) - 0.5 * cos(a))
 			)
-			context.lineTo( // rear centre (behind the ship)
-				ship.x - ship.r * 5 / 3 * Math.cos(ship.a),
-				ship.y + ship.r * 5 / 3 * Math.sin(ship.a)
+			context.lineTo(
+				x - r * 5 / 3 * cos(a),
+				y + r * 5 / 3 * sin(a)
 			)
-			context.lineTo( // rear right
-				ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5 * Math.sin(ship.a)),
-				ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5 * Math.cos(ship.a))
+			context.lineTo(
+				x - r * (2 / 3 * cos(a) - 0.5 * sin(a)),
+				y + r * (2 / 3 * sin(a) + 0.5 * cos(a))
 			)
 			context.closePath()
+			context.strokeStyle = "white"
 			flicker > 2 && context.stroke()
 		}
 
 		flicker++
 		flicker > 4 && (flicker = 0)
 	} else {
-		// apply friction (slow the ship down when not is_thrusting)
-		ship.thrust.x -= friction * ship.thrust.x / fps
-		ship.thrust.y -= friction * ship.thrust.y / fps
+		ship.thrust.x -= (ship.thrust.x * 0.006)
+		ship.thrust.y -= (ship.thrust.y * 0.006)
 		fxThrust.stop()
 	}
 
-	// draw the lasers
-	ship.lasers.forEach((laser) => {
-		if (laser.explode_time == 0) {
-			context.beginPath()
-			context.arc(laser.x, laser.y, ship_size / 15, 0, pi * 2, false)
-			context.fill()
-		}
-	})
-
-	// draw the game text
 	if (text_alpha > 0) {
 		context.textAlign = "center"
 		context.textBaseline = "middle"
@@ -324,18 +302,6 @@ setInterval(() => {
 		text_alpha -= 0.008
 	}
 
-	ship.is_dead && text_alpha <= 0 && new_game()
-
-	// draw lives
-	Array(game_lives).fill(0).forEach((value, index) =>
-		draw_ship(
-			((index * 1.2) + 1) * ship_size,
-			ship_size,
-			pi / 2
-		)
-	)
-
-	// detect laser hits on asteroids
 	asteroids_list.forEach((asteroid, index) => {
 		ship.lasers.forEach((laser) => {
 			if (laser.explode_time == 0 && distance(asteroid.x, asteroid.y, laser.x, laser.y) < asteroid.r) {
@@ -345,13 +311,19 @@ setInterval(() => {
 		})
 	})
 
-	if (!exploding) {
+	if (ship.explode_time > 0) {
+		ship.explode_time--
+		if (ship.explode_time == 0) {
+			game_lives--
+			ship = default_ship()
+			game_lives <= 0 && game_over()
+		}
+	} else {
 		ship.a += ship.rot
 		ship.x += ship.thrust.x / 2
 		ship.y += ship.thrust.y / 2
 
-		!ship.is_dead &&
-			ship.blink_num == 0 &&
+		if (!ship.is_dead && ship.blink_num == 0) {
 			asteroids_list.forEach((asteroid, index) => {
 				if (distance(ship.x, ship.y, asteroid.x, asteroid.y) < ship.r + asteroid.r) {
 					destroy_asteroid(asteroid, index)
@@ -359,74 +331,36 @@ setInterval(() => {
 					fxExplode.play()
 				}
 			})
-	} else {
-		// reduce the explode time
-		ship.explode_time--
-
-		// reset the ship after the explosion has finished
-		if (ship.explode_time == 0) {
-			game_lives--
-			ship = default_ship()
-
-			if (game_lives > 0) return
-			ship.is_dead = true
-			text = "Game Over"
-			text_alpha = 1.0
 		}
 	}
 
-	// handle edge of screen
-	if (ship.x < 0 - ship.r) {
-		ship.x = canvas.width + ship.r
-	} else if (ship.x > canvas.width + ship.r) {
-		ship.x = 0 - ship.r
-	}
-	if (ship.y < 0 - ship.r) {
-		ship.y = canvas.height + ship.r
-	} else if (ship.y > canvas.height + ship.r) {
-		ship.y = 0 - ship.r
-	}
+	screen_wrap_ship()
 
-	// move the lasers
 	ship.lasers.forEach((laser, index) => {
-		laser.dist > canvas.width * 0.6 && ship.lasers.splice(index, 1)
+		(laser.dist > canvas.width * 0.6) && ship.lasers.splice(index, 1)
 
-		// handle the explosion
 		if (laser.explode_time > 0) {
 			laser.explode_time--
 			laser.explode_time == 0 && ship.lasers.splice(index, 1)
-		}
-		else {
-			// move the laser
+		} else {
 			laser.x += laser.xv
 			laser.y += laser.yv
-
-			// calculate the distance travelled
-			laser.dist += Math.sqrt(Math.pow(laser.xv, 2) + Math.pow(laser.yv, 2))
+			laser.dist += Math.hypot(laser.xv, laser.yv)
 		}
 
-		// handle edge of screen
-		if (laser.x < 0) {
-			laser.x = canvas.width
-		} else if (laser.x > canvas.width) {
-			laser.x = 0
-		}
-		if (laser.y < 0) {
-			laser.y = canvas.height
-		} else if (laser.y > canvas.height) {
-			laser.y = 0
-		}
+		laser.x < 0 && (laser.x = canvas.width)
+		laser.x > canvas.width && (laser.x = 0)
+		laser.y < 0 && (laser.y = canvas.height)
+		laser.y > canvas.height && (laser.y = 0)
 	})
 
-	// move asteroids and handle screen wrap
 	asteroids_list.forEach((asteroid) => {
 		asteroid.x += asteroid.xv
 		asteroid.y += asteroid.yv
 
-		if (asteroid.x < -asteroid.r) asteroid.x = canvas.width + asteroid.r
-		if (asteroid.x > canvas.width + asteroid.r) asteroid.x = -asteroid.r
-
-		if (asteroid.y < -asteroid.r) asteroid.y = canvas.height + asteroid.r
-		if (asteroid.y > canvas.height + asteroid.r) asteroid.y = -asteroid.r
+		asteroid.x < -asteroid.r && (asteroid.x = canvas.width + asteroid.r)
+		asteroid.x > canvas.width + asteroid.r && (asteroid.x = -asteroid.r)
+		asteroid.y < -asteroid.r && (asteroid.y = canvas.height + asteroid.r)
+		asteroid.y > canvas.height + asteroid.r && (asteroid.y = -asteroid.r)
 	})
 }, 1000 / fps)

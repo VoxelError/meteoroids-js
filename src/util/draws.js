@@ -13,7 +13,7 @@ export const stroke_line = (context, { start, end, width, dash, offset, style, c
 	context.stroke()
 }
 
-export const stroke_polygon = (context, { points, close = true, width, dash, offset, style, cap, alpha }) => {
+export const stroke_polygon = (context, { points, close = false, width, dash, offset, style, cap, alpha }) => {
 	if (points.length < 3) {
 		console.log("insufficient points")
 		return

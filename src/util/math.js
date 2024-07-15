@@ -1,4 +1,4 @@
-export const { PI: pi, sin, cos, abs, sqrt, random, floor, sign, min, max } = Math
+export const { PI: pi, sin, cos, abs, sqrt, random, floor, sign, min, max, round, hypot, atan2 } = Math
 export const tau = pi * 2
 export const phi = pi / 2
 

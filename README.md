@@ -7,5 +7,7 @@ Designed after the freeCodeCamp.org [Asteroids Tutorial](https://www.youtube.com
 
 ### Controls
 Left/Right Arrow Keys - Rotate Ship
+
 Up Arrow Key - Thrust
+
 Spacebar - Shoot
